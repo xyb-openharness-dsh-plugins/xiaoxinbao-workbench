@@ -1,0 +1,5 @@
+- insert:
+    - id: cancer-psych-support-workbench
+      name: dsh-cancer-psych-support-workbench
+      config:
+        root: !!js dshHomePath('cancer-psych-support-workbench')

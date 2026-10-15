@@ -1,0 +1,89 @@
+{
+  "_notice": "所有角色与对话均为虚构设计示例，人物 SVG 是可替换的原创占位插画。",
+  "roles": [
+    {
+      "id": "new-diagnosis",
+      "name": "新确诊陪伴",
+      "group": "患者与家属",
+      "landingLine": "我不是要你马上想明白。我们可以先把最担心的一件事说出来。",
+      "opening": "我现在脑子很乱，先听我说说。",
+      "portrait": "assets/characters/female/role-0.webp",
+      "focusTopics": [
+        "刚听到诊断，脑子很乱",
+        "我最担心接下来会发生什么",
+        "整理下次就诊要问的问题"
+      ],
+      "appearance": "年轻女性友人，轻松倾听"
+    },
+    {
+      "id": "treatment-and-caregiver",
+      "name": "治疗与照护同行",
+      "group": "治疗中的患者与照护者",
+      "landingLine": "你可以一边在意，一边累了。崩溃、修复、前行，不必按顺序来。",
+      "opening": "我最近情绪起伏很大，也照顾得很累。",
+      "portrait": "assets/characters/female/role-1.webp",
+      "focusTopics": [
+        "我今天又崩溃了",
+        "照顾家人让我快撑不住",
+        "治疗并发症让我很害怕"
+      ],
+      "appearance": "中年女性照护者风格，沉稳安抚"
+    },
+    {
+      "id": "palliative-companion",
+      "name": "安宁疗护陪伴",
+      "group": "患者、家属与照护者",
+      "landingLine": "想要舒服一点、想说的话、在意的人，都可以慢慢讲。",
+      "opening": "我想聊聊现在最在意的事。",
+      "portrait": "assets/characters/female/role-2.webp",
+      "focusTopics": [
+        "怎样让今天舒服一点",
+        "我有些重要的话想说",
+        "家人之间怎么谈接下来的安排"
+      ],
+      "appearance": "中年女性心理咨询师风格，温和专业"
+    },
+    {
+      "id": "bereavement-support",
+      "name": "哀伤同行",
+      "group": "正在经历失去的人",
+      "landingLine": "你不必照着谁的时间表过日子。今天只想念 TA，也可以。",
+      "opening": "我很想念 TA，不想被催着走出来。",
+      "portrait": "assets/characters/female/role-3.webp",
+      "focusTopics": [
+        "我今天特别想念 TA",
+        "不知道怎么面对空下来的日常",
+        "有人催我走出来，我很难受"
+      ],
+      "appearance": "中年女性哀伤陪伴者，安静共情"
+    },
+    {
+      "id": "daily-lightness",
+      "name": "日常喘息与轻松聊",
+      "group": "患者与家属",
+      "landingLine": "今天先不聊治疗。你想听个猫咪小故事吗？",
+      "opening": "今天不想聊病情，陪我轻松聊一会儿吧。",
+      "portrait": "assets/characters/female/role-4.webp",
+      "focusTopics": [
+        "给我讲讲猫狗趣事",
+        "今天想聊点生活八卦",
+        "陪我做个一分钟放松"
+      ],
+      "appearance": "年轻女性朋友，活泼轻快，天然粉色染发"
+    },
+    {
+      "id": "relative-rant",
+      "name": "亲戚吐槽与边界练习",
+      "group": "患者与家属",
+      "landingLine": "来吐槽让你为难的话。等你愿意，我们再想怎么回应。",
+      "opening": "我现在只想吐槽，不想解决。",
+      "portrait": "assets/characters/female/role-5.webp",
+      "focusTopics": [
+        "我想吐槽一件亲戚做的事",
+        "帮我练习一句边界表达",
+        "先陪我吐槽这件糟心事"
+      ],
+      "appearance": "年轻女性朋友，俏皮直接，蓝色染发，适合一起吐槽"
+    }
+  ]
+}

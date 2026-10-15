@@ -1,0 +1,55 @@
+{
+  "name": "dsh-cancer-psych-support-workbench",
+  "version": "0.3.11",
+  "description": "Cancer patient and caregiver emotional support and communication workbench for DSH Desktop",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xyb-openharness-dsh-plugins/xiaoxinbao-workbench.git"
+  },
+  "type": "module",
+  "main": "./dsh/index.js",
+  "exports": {
+    ".": "./dsh/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "assets/xyb-logo.png",
+    "assets/warm-sitting-companions.jpg",
+    "assets/characters/female/role-*.webp",
+    "dsh",
+    "lib",
+    "skills",
+    "cordis.patch.yml",
+    "README.md",
+    "SPEC.md",
+    "docs",
+    "data/mock"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node --check dsh/index.js && node --check dsh/settings-store.js && node --check dsh/record-store.js && node --check dsh/knows-url.js && node --check src/client.js && node --check lib/client.js && node --test test/*.test.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "dsh-desktop-workbenches"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.1 <5",
+    "@deepseek-ai/schemastery": ">=3.18.1 <4",
+    "@deepseek-ai/dsh-client-connection": ">=0.1.0-rc.0 <0.3.0-0",
+    "@deepseek-ai/dsh-host-webserver": ">=0.1.0-rc.0 <0.3.0-0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}
