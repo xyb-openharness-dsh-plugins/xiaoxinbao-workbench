@@ -1,6 +1,6 @@
 {
   "name": "dsh-cancer-psych-support-workbench",
-  "version": "0.3.11",
+  "version": "0.3.13",
   "description": "Cancer patient and caregiver emotional support and communication workbench for DSH Desktop",
   "repository": {
     "type": "git",
@@ -30,7 +30,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "node --check dsh/index.js && node --check dsh/settings-store.js && node --check dsh/record-store.js && node --check dsh/knows-url.js && node --check src/client.js && node --check lib/client.js && node --test test/*.test.mjs"
+    "check": "node --check dsh/index.js && node --check dsh/settings-store.js && node --check dsh/record-store.js && node --check dsh/knows-url.js && node --check src/client.js && node --check src/prompt.mjs && node --check lib/client.js && node --test test/*.test.mjs"
   },
   "dsh": {
     "bundle": {

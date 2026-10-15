@@ -15,9 +15,14 @@ const assets = {
 }
 const background = await dataUri('assets/warm-sitting-companions.jpg', 'image/jpeg')
 const css = (await readFile(resolve(root, 'src/client.css'), 'utf8')).replaceAll('__BACKGROUND__', background)
+// src/prompt.mjs 是纯逻辑模块，test/ 直接 import 它做契约测试；这里剥掉 export 关键字
+// 内联进客户端 bundle，保证「被测试的提示词」和「真正发出去的提示词」是同一份源码。
+const promptModule = (await readFile(resolve(root, 'src/prompt.mjs'), 'utf8')).replace(/^export /gm, '')
 const source = (await readFile(resolve(root, 'src/client.js'), 'utf8'))
   .replace('/*__ASSET_MAP__*/', Object.entries(assets).map(([key, value]) => `${JSON.stringify(key)}:${JSON.stringify(value)}`).join(','))
+  .replace('/*__PROMPT_MODULE__*/', promptModule)
   .replace("'__CPS_CSS__'", JSON.stringify(css))
+for (const token of ['__PROMPT_MODULE__', '__ASSET_MAP__', '__CPS_CSS__']) if (source.includes(token)) throw new Error(`客户端占位符未被完整替换：${token}`)
 await writeFile(resolve(root, 'lib/client.js'), source)
 let preview = await readFile(resolve(root, 'docs/ui-preview.template.html'), 'utf8')
 preview = preview.replaceAll('__BACKGROUND__', background).replaceAll('__LOGO__', assets.logo)

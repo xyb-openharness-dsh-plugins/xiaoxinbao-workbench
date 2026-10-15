@@ -1,14 +1,8 @@
 (() => {
   const ASSETS = Object.freeze({ /*__ASSET_MAP__*/ })
   const css = '__CPS_CSS__'
-  const roles = [
-    { id: 'new-diagnosis', name: '新确诊陪伴', group: '患者与家属', line: '先不急着想明白。我们可以先把最担心的一件事说出来。', intro: '陪你安放刚确诊后的震惊、害怕和信息过载，整理已知、未知和下一次就诊想问的问题。', opening: '我刚听到诊断，脑子很乱，先听我说说。', portrait: ASSETS.role0, topics: ['刚听到诊断，脑子很乱', '我最担心接下来会发生什么', '整理下次就诊要问的问题'] },
-    { id: 'treatment-and-caregiver', name: '治疗与照护同行', group: '治疗中的患者与照护者', line: '崩溃、修复、前行，不必按顺序来。', intro: '陪你走过治疗和并发症带来的反复波动，也看见家属照护、工作与家庭角色交错时的疲惫。', opening: '我最近情绪起伏很大，也照顾得很累。', portrait: ASSETS.role1, topics: ['我今天又崩溃了', '照顾家人让我快撑不住', '治疗问题让我很担心'] },
-    { id: 'palliative-companion', name: '安宁疗护陪伴', group: '患者、家属与照护者', line: '想要舒服一点、想说的话，都可以慢慢讲。', intro: '围绕舒适、尊严、愿望表达和临终陪伴，整理此刻的需要与想对家人或照护团队说的话。', opening: '我想聊聊现在最在意的事。', portrait: ASSETS.role2, topics: ['怎样让今天舒服一点', '我有些重要的话想说', '家人之间怎么谈接下来的安排'] },
-    { id: 'bereavement-support', name: '哀伤同行', group: '正在经历失去的人', line: '你不必照着谁的时间表过日子。', intro: '思念、愤怒、麻木或说不清的感觉，都可以从一点点开始；也可以先聊聊日常。', opening: '我很想念 TA，不想被催着走出来。', portrait: ASSETS.role3, topics: ['我今天特别想念 TA', '不知道怎么面对空下来的日常', '有人催我走出来，我很难受'] },
-    { id: 'daily-lightness', name: '日常喘息与轻松聊', group: '患者与家属', line: '今天先不聊治疗。要不要说说猫狗？', intro: '把注意力暂时放到猫狗、生活趣事和轻松话题上，给今天留一点普通生活的空间。', opening: '今天不想聊病情，陪我轻松聊一会儿吧。', portrait: ASSETS.role4, topics: ['给我讲讲猫狗趣事', '今天想聊点生活八卦', '陪我做个一分钟放松'] },
-    { id: 'relative-rant', name: '亲戚吐槽与边界练习', group: '患者与家属', line: '来吐槽让你为难的话。等你愿意，再想怎么回应。', intro: '针对令人疲惫的言行安全宣泄；愿意时，一起练习清楚、坚定又不伤人的边界表达。', opening: '我现在只想吐槽，不想解决。', portrait: ASSETS.role5, topics: ['我想吐槽一件亲戚做的事', '帮我练习一句边界表达', '先陪我吐槽这件糟心事'] },
-  ]
+  /*__PROMPT_MODULE__*/
+  const roles = buildRoles(ASSETS)
   const searchSkills = [
     { id: 'guidelines', name: '指南与共识', short: '按癌种、地区和版本查找诊疗指南', prompt: '检索肿瘤诊疗规范、指南与共识。优先 CACA、CSCO、ASCO、ESMO、NCCN、WHO 等发布方的当前版本；说明地区、发布日期/版本、适用范围与链接。区分指南原文和二手解读；找不到可核验原文时明确说未找到。不要据此替个人决定治疗。' },
     { id: 'evidence', name: '文献与临床研究', short: '查原始研究、综述与临床试验', prompt: '进行循证资料检索。优先原始研究、系统综述、指南和 ClinicalTrials.gov / WHO ICTRP 等登记源；注明研究设计、发表年份、主要限制、研究人群与链接。不要把早期试验或相关性说成已证实疗效，不推断用户个人适用性。' },
@@ -42,6 +36,7 @@
       function App({ service, entry, conversation }) {
         const [tab, setTab] = useState('陪伴')
         const [roleId, setRoleId] = useState('treatment-and-caregiver')
+        const [promptedRoleId, setPromptedRoleId] = useState('')
         const [topic, setTopic] = useState('')
         const [modal, setModal] = useState(false)
         const [busy, setBusy] = useState(false)
@@ -64,6 +59,9 @@
         const [health, setHealth] = useState('')
         const [showSession, setShowSession] = useState(false)
         const active = roles.find((item) => item.id === roleId) || roles[1]
+        // 角色设定只在开场写入一次，之后的对话风格靠那条消息维持；所以切换角色卡时
+        // 已经开始的会话不会自动变风格。这里据此提示用户，并提供重新写入的入口。
+        const selectedRoleChanged = Boolean(promptedRoleId) && promptedRoleId !== roleId
         const ctx = service?.ctx
         // 宿主的 service.ownsSession()/isActive() 内部会读取 service 自身的 Cordis fiber 名称
         // （this.ctx.fiber.entry.options.name）。register() 时我们通过 ctx.desktopWorkbenches
@@ -117,18 +115,25 @@
             const scoped = ctx.sessions.scope(id)
             const input = scoped?.get?.('conversation')?.input?.for?.(scoped)
             if (!input?.setDraft) throw new Error('当前宿主没有提供原生会话输入接口。')
-            input.setDraft(`请以「${active.name}」的方式陪我聊聊。${active.intro}\n\n当前我想说：${topic.trim() || active.opening}${communicationPreferences.trim() ? `\n\n我自己保存的沟通偏好（请尊重并可随时询问我是否仍适用）：${communicationPreferences.trim()}` : ''}\n\n先承接情绪、配合聊天，并问我此刻更想被倾听、整理还是听建议；允许情绪反复，不急着给清单或强迫积极。我愿意时，再邀请我了解经验证且获授权的量表或心理专业支持；若持续痛苦明显影响生活或我主动提出，请温和建议联系肿瘤心理/心理咨询专业人员。涉及病情、治疗、疼痛、药物或并发症时，帮我记录问题并交由肿瘤/安宁疗护团队核实；不要诊断、预测预后或指导调整治疗。出现急剧加重的症状或即时伤害风险，优先建议联系当地急救、就近急诊或可信任的人陪同。`)
+            input.setDraft(rolePrompt(active, topic, communicationPreferences))
+            setPromptedRoleId(active.id)
             setShowSession(true); flash('已准备原生 DSH 会话草稿，请在会话中核对并发送。')
           } catch (e) { flash(e.message || '暂时无法创建会话。', true) }
           finally { setBusy(false); setModal(false) }
         }
-        const setNativeDraft = async (text) => {
+        // 返回是否真的写进了草稿。调用方只有拿到 true 才能更新界面状态，
+        // 否则会出现"提示已经重发、实际什么都没写"的假成功。
+        const setNativeDraft = async (text, successMessage = '整理请求已放入 DSH 原生会话输入框，请核对后发送。') => {
           const id = service.currentSession()
-          if (!id || !ownsSession(id)) { flash('先选择或创建本工作台的原生会话。', true); setTab('陪伴'); return }
+          if (!id || !ownsSession(id)) { flash('先选择或创建本工作台的原生会话。', true); setTab('陪伴'); return false }
           const scoped = ctx.sessions.scope(id)
           const input = scoped?.get?.('conversation')?.input?.for?.(scoped)
-          if (!input?.setDraft) { flash('当前宿主没有提供原生会话输入接口。', true); return }
-          input.setDraft(text); setTab('陪伴'); setShowSession(true); flash('整理请求已放入 DSH 原生会话输入框，请核对后发送。')
+          if (!input?.setDraft) { flash('当前宿主没有提供原生会话输入接口。', true); return false }
+          try { input.setDraft(text) } catch (e) { flash(e?.message || '宿主拒绝写入会话草稿。', true); return false }
+          setTab('陪伴'); setShowSession(true); flash(successMessage); return true
+        }
+        const sendRolePrompt = async (role) => {
+          if (await setNativeDraft(rolePrompt(role, role.opening, communicationPreferences), '已把角色设定写进 DSH 原生会话输入框，请核对后发送。')) setPromptedRoleId(role.id)
         }
         const startReview = () => setNativeDraft(`请根据我们刚才这段对话，生成一份简短、可由我修改的「本次回顾草稿」。只总结用户明确表达的内容，不推断诊断、预后或心理状态。请按以下标题输出：\n【本次聊到】概括主题\n【用户原话】可摘录一句用户明确说过的话；没有则写“未记录”\n【中性观察】只描述用户明确提到的感受、压力来源、需要；不贴标签、不评价对错\n【下一步选项】最多 3 条、可选择或跳过，不给医疗/用药指令\n【温和收尾】肯定其已经做的具体努力，给出积极但真实的鼓励，不强迫积极\n【量表邀请】只询问是否愿意了解合适的经验证筛查工具，不自行打分或诊断。若无足够信息，请直接说明。请不要声称这是一份临床评估。`)
         const pasteReview = async () => {
@@ -264,7 +269,7 @@
         ])
         const status = error || notice
         return h('main', { className: 'cps-frame' },
-          h('header', { className: 'cps-topbar' }, h('div', { className: 'cps-brand' }, h('img', { src: ASSETS.logo, alt: '小胰宝' }), h('b', null, 'DSH'), h('i'), h('strong', null, '留一盏灯'), h('span', null, '心理支持与沟通工作台'), h('small', null, 'v0.3.11')), h('div', { className: 'cps-top-actions' }, h('span', { className: 'cps-service-state' }, health), button('⚙ 配置', () => setTab('配置'), `cps-settings-button${tab === '配置' ? ' active' : ''}`))),
+          h('header', { className: 'cps-topbar' }, h('div', { className: 'cps-brand' }, h('img', { src: ASSETS.logo, alt: '小胰宝' }), h('b', null, 'DSH'), h('i'), h('strong', null, '留一盏灯'), h('span', null, '心理支持与沟通工作台'), h('small', null, 'v0.3.13')), h('div', { className: 'cps-top-actions' }, h('span', { className: 'cps-service-state' }, health), button('⚙ 配置', () => setTab('配置'), `cps-settings-button${tab === '配置' ? ' active' : ''}`))),
           h('nav', { className: 'cps-tabs', 'aria-label': '工作台页面' }, ['陪伴', '本次回顾', '量表记录', '资料检索', '历史对话'].map((name) => button(name, () => setTab(name), `cps-tab${tab === name ? ' active' : ''}`, false, name))),
           status ? h('div', { className: `cps-alert${error ? ' is-error' : ''}`, role: 'status' }, status) : null,
           tab === '陪伴' ? h('div', { className: `cps-main${showSession ? ' with-chat' : ''}` },
@@ -273,7 +278,9 @@
               h('div', { className: 'cps-role-grid' }, roles.map((role) => h('button', { key: role.id, className: `cps-role${role.id === roleId ? ' selected' : ''}`, onClick: () => { setRoleId(role.id); setNotice(''); setError('') }, 'aria-pressed': role.id === roleId }, h('img', { src: role.portrait, alt: '' }), h('strong', null, role.name), h('span', { className: 'cps-rule' }), h('span', { className: 'cps-role-line' }, `“${role.line}”`), h('small', null, role.group)))),
               h('div', { className: 'cps-selected' }, h('div', null, h('strong', null, active.intro), h('p', null, '对话由 DSH 原生会话和你配置的模型承载。'), button(ownsCurrent ? '继续这段对话' : '开始陪伴', () => { if (ownsCurrent) { setShowSession(true); setNotice('') } else { setTopic(active.opening); setModal(true) } }, 'cps-primary', busy))),
               h('div', { className: 'cps-crisis-note' }, '如果你或身边的人现在有伤害自己的危险，或出现急剧加重的身体症状，请立即联系当地急救服务、就近急诊或可信任的人陪同。')),
-            showSession ? h('section', { className: 'cps-chat-area' }, h('div', { className: 'cps-chat-toolbar' }, h('strong', null, `${active.name} · DSH 原生会话`), button('生成本次回顾', startReview, 'cps-secondary'), button('返回角色', () => setShowSession(false), 'cps-link')), h('div', { className: 'cps-conversation' }, ownsCurrent ? conversation : h('div', { className: 'cps-no-chat' }, '创建或恢复工作台会话后，这里会显示 DSH 原生对话。'))) : null) : null,
+            showSession ? h('section', { className: 'cps-chat-area' }, h('div', { className: 'cps-chat-toolbar' }, h('strong', null, `${active.name} · DSH 原生会话`), button('生成本次回顾', startReview, 'cps-secondary'), button('重发角色设定', () => sendRolePrompt(active), 'cps-secondary', busy), button('返回角色', () => setShowSession(false), 'cps-link')), h('div', { className: 'cps-conversation' }, ownsCurrent ? conversation : h('div', { className: 'cps-no-chat' }, '创建或恢复工作台会话后，这里会显示 DSH 原生对话。'))) : null) : null,
+          tab === '陪伴' && selectedRoleChanged ? h('div', { className: 'cps-alert', role: 'status' }, `已切换到「${active.name}」，但当前会话仍按上一个角色的设定在聊。`,
+            button('把新角色设定发进这段对话', () => sendRolePrompt(active), 'cps-secondary', busy)) : null,
           tab === '本次回顾' ? renderReview() : null,
           tab === '量表记录' ? h('div', { className: 'cps-page' }, h('div', { className: 'cps-page-heading' }, h('div', null, h('p', { className: 'cps-kicker' }, '自愿 · 筛查不等于诊断'), h('h1', null, '量表与自评'), h('p', null, '可以先聊，再由你决定要不要了解或完成一项量表。请使用有授权且经验证的中文版；工作台不展示受版权保护的题目。'))),
             h('div', { className: 'cps-instrument-grid' }, instruments.map((scale) => h('article', { key: scale.id, className: 'cps-instrument' }, h('strong', null, scale.name), h('span', null, scale.scope), h('p', null, scale.note), button('请助手介绍这项量表', () => setNativeDraft(`请先询问我是否愿意了解「${scale.name}」。简要说明它的筛查用途、使用边界、经验证中文版与授权版本的查找途径；不要在未核实授权前复刻题目，不要做诊断。请先问我是否愿意继续。`), 'cps-secondary')))),
