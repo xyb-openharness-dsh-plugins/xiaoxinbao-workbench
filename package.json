@@ -25,6 +25,7 @@
     "README.md",
     "SPEC.md",
     "docs",
+    "!docs/screenshots",
     "data/mock"
   ],
   "scripts": {
