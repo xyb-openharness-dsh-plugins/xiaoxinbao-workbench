@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>选中角色卡 · 布局预览</title>
+<style>
+:root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#21473e;background:#f1fbf5}
+body{margin:0;padding:34px 22px;background:linear-gradient(138deg,#f4fcf7,#e3f6eb);min-height:100vh}
+.wrap{max-width:930px;margin:0 auto}
+h3{color:#46856d;font-size:12px;letter-spacing:.1em;margin:26px 0 10px}
+.cps-selected{padding:15px 18px;border:1px solid rgba(255,255,255,.85);border-radius:14px;background:rgba(251,255,252,.74);box-shadow:0 8px 28px rgba(79,128,102,.06)}
+/* 顶部行：文案 + 按钮，水平对齐 */
+.cps-selected-row{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.cps-selected-copy strong{font-size:13px;line-height:1.7}
+.cps-selected-copy p{margin:3px 0 0;color:#789087;font-size:10px}
+.cps-primary{flex-shrink:0;padding:10px 15px;border:0;border-radius:9px;background:linear-gradient(110deg,#23a883,#16866f);color:#fff;font-size:12px;font-weight:700;box-shadow:0 5px 14px rgba(23,145,113,.16);cursor:pointer;font-family:inherit}
+.cps-primary:hover{filter:brightness(1.05)}
+/* 话题行：三个并排 */
+.cps-selected-topics{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:13px;padding-top:12px;border-top:1px solid rgba(53,128,100,.16)}
+.cps-selected-topics small{color:#789087;font-size:10px;letter-spacing:.05em;flex-shrink:0}
+.cps-selected-topics button{padding:7px 13px;border:1px solid #d8ebdf;border-radius:999px;background:#f3faf5;color:#4a7b65;font-size:11px;line-height:1.5;cursor:pointer;font-family:inherit}
+.cps-selected-topics button:hover{background:#e9f6ee;border-color:#bcdcc9}
+/* 窄屏回退 */
+@media(max-width:760px){
+  .cps-selected-row{flex-direction:column}
+  .cps-selected-topics{flex-direction:column;align-items:stretch}
+  .cps-selected-topics button{text-align:center}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h3>新版 · 按钮右上 / 三个话题并排一行</h3>
+  <div class="cps-selected">
+    <div class="cps-selected-row">
+      <div class="cps-selected-copy">
+        <strong>针对令人疲惫的言行安全宣泄；愿意时，一起练习清楚、坚定又不伤人的边界表达。</strong>
+        <p>对话由 DSH 原生会话和你配置的模型承载。</p>
+      </div>
+      <button class="cps-primary">继续这段对话</button>
+    </div>
+    <div class="cps-selected-topics">
+      <small>可以就这样开始：</small>
+      <button>我想吐槽一件亲戚做的事</button>
+      <button>帮我练习一句边界表达</button>
+      <button>先陪我吐槽这件糟心事</button>
+    </div>
+  </div>
+
+  <h3>长文案的角色（对照，验证按钮不被挤压）</h3>
+  <div class="cps-selected">
+    <div class="cps-selected-row">
+      <div class="cps-selected-copy">
+        <strong>陪你走过治疗和并发症带来的反复波动，也看见家属照护、工作与家庭角色交错时的疲惫。</strong>
+        <p>对话由 DSH 原生会话和你配置的模型承载。</p>
+      </div>
+      <button class="cps-primary">开始陪伴</button>
+    </div>
+    <div class="cps-selected-topics">
+      <small>可以就这样开始：</small>
+      <button>我今天又崩溃了</button>
+      <button>照顾家人让我快撑不住</button>
+      <button>治疗问题让我很担心</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

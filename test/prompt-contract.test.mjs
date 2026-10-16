@@ -82,11 +82,17 @@ test('提示词明确禁止了那次反馈里的三个具体失手', () => {
 
 test('角色提示词只在开场写入一次，切换角色不会改写已有会话', async () => {
   const client = await readFile(new URL('../src/client.js', import.meta.url), 'utf8')
-  // 只有两个写入口：beginSession 的开场写入，以及 setNativeDraft 供用户主动重发。
+  // 三个写入点：beginSession 的开场写入、startFreshSession 的新会话开场写入，
+  // 以及 setNativeDraft 供用户主动重发。除此之外不该有别的自动写入。
   const writes = client.match(/input\.setDraft\(/g) || []
-  assert.equal(writes.length, 2, 'setDraft 应只有开场与手动重发两个写入点')
-  assert.ok(client.includes('if (!id || !ownsSession(id)) id = await service.newWorkspaceSession()'), '开场路径缺失')
+  assert.equal(writes.length, 3, 'setDraft 应只有三处写入点')
+  // 新建会话必须走 newSession(workspaceId)：newWorkspaceSession() 每次都会弹
+  // 系统目录选择器，而 newSession 只在完全没有工作区时才回退到它。
+  assert.ok(client.includes('if (!id || !ownsSession(id)) id = await newSessionId()'), '开场路径缺失')
+  assert.ok(!/id = await service\.newWorkspaceSession\(\)/.test(client), '不应每次都弹目录选择器')
+  assert.ok(client.includes('service.newSession(workspaceId)'), '缺少 newSession 调用')
   assert.ok(client.includes('const sendRolePrompt = async (role) =>'), '缺少「重发角色设定」入口')
+  assert.ok(client.includes('const startFreshSession = async () =>'), '缺少「新开一段对话」入口')
   // 切换角色卡本身不能触发写入，否则用户没准备好就被改了会话。
   const roleCard = client.match(/onClick: \(\) => \{ setRoleId\(role\.id\); setNotice\(''\); setError\(''\) \}/)
   assert.ok(roleCard, '角色卡点击应只改本地 state，不写入会话')

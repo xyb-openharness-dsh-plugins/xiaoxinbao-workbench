@@ -5,3 +5,14 @@ node_modules/
 *.tgz
 .DS_Store
 coverage/
+
+# 本地测试运行产生的临时数据，不进版本库。
+# 这些数据落到 test/ 是因为 npm run check 把 test/ 当作默认记录目录。
+test/*.sqlite
+test/*.sqlite-shm
+test/*.sqlite-wal
+test/.desktop-session-projects.json
+# 工作台运行时的本地记录文件：里面是真实会话内容，绝不能提交
+test/cancer-psych-support-memory.json
+# 另一个工作台（寻馆旅行）误用本仓库 test/ 当数据目录时留下的项目快照，与本项目无关
+test/寻馆-*/

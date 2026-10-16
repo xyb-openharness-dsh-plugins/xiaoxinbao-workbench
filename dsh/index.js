@@ -3,13 +3,27 @@ import { readFile } from 'node:fs/promises'
 import { readSettings, writeSettings, readSecrets, writeSecrets, removeSecret } from './settings-store.js'
 import { listRecords, addReview, addMeasurement, addKnowledgeSource, saveCommunicationPreferences, deleteRecord, clearRecords } from './record-store.js'
 import { resolveKnowsEndpoint } from './knows-url.js'
+import { readSessionDraft, checkSessionOwnership } from './session-review.js'
 
 export const name = 'cancer-psych-support-workbench'
+// 必须是数组形式。Cordis 的 Inject.resolve()（cordis/lib/index.js:1491-1498）
+// 对对象形式的定义是「服务名 → 拦截配置」：对象的每个键都被当成一个要注入的
+// 服务名。写成 { required: [...], optional: [...] } 会让它去找名为 `required`
+// 和 `optional` 的两个不存在的服务，插件永远停在 pending（日志：
+// "pending (waiting for services: required, optional)"），apply() 不执行，
+// 所有 /api/... 路由都不注册，界面就报「请求失败（404）」。
+//
+// sessionQuery 因此不能列在这里 —— 列了就变成硬依赖，缺它的宿主上整个工作台
+// 起不来。改为运行时可选读取：见 dsh/session-review.js 的 readSessionDraft()，
+// 用 ctx.get('sessionQuery', false) 取（不要求 inject 声明），取不到就给一句
+// 用户看得懂的提示，只影响「本次回顾」这一个功能。
 export const inject = ['webServer', 'connection']
 export const Config = Schema.object({ root: Schema.string().required() })
 
 const PREFIX = '/api/cancer-psych-support-workbench'
 const MAX_BODY = 64 * 1024
+// 与 package.json 的 repository 对应，宿主用它作为会话归属的 owner id。
+const WORKBENCH_OWNER = 'xyb-openharness-dsh-plugins/xiaoxinbao-workbench'
 
 function send(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' })
@@ -66,7 +80,7 @@ async function callKnows(root, query) {
   return normalizeSearchResult(data)
 }
 
-async function handle(req, res, config) {
+async function handle(req, res, config, ctx) {
   const url = new URL(req.url, 'http://localhost')
   const route = url.pathname.slice(PREFIX.length) || '/'
   if (route === '/settings' && req.method === 'GET') return send(res, 200, { settings: await readSettings(config.root) })
@@ -87,6 +101,17 @@ async function handle(req, res, config) {
   if (route === '/records' && req.method === 'DELETE') return send(res, 200, await clearRecords(settings.dataRoot))
   if (route === '/export' && req.method === 'GET') return send(res, 200, { exportedAt: new Date().toISOString(), workbench: name, ...(settings.dataRoot ? await records() : { reviews: [], measurements: [] }) })
   if (route === '/reviews' && req.method === 'POST') return send(res, 201, { review: await addReview(settings.dataRoot, await readBody(req)) })
+  // 直接读会话正文生成回顾草稿。只读，不落盘：用户核对修改后仍需再 POST /reviews
+  // 并带 approved: true 才会写入本地记录文件。
+  if (route === '/reviews/from-session' && req.method === 'POST') {
+    const body = await readBody(req)
+    // 归属核对：只允许读本工作台自己的会话。'other' 明确拒绝；
+    // 'unknown' 表示读不到宿主状态文件，放行但把结论回传，界面会照实说明。
+    const ownership = await checkSessionOwnership(config.root, body.sessionId, WORKBENCH_OWNER)
+    if (ownership === 'other') return send(res, 403, { error: '这段会话属于其他工作台，本工作台不会读取。' })
+    const draft = await readSessionDraft(ctx, body.sessionId)
+    return send(res, 200, { draft, ownership, roleId: String(body.roleId || '').slice(0, 80) })
+  }
   if (route === '/measurements' && req.method === 'POST') return send(res, 201, { measurement: await addMeasurement(settings.dataRoot, await readBody(req)) })
   if (route === '/knowledge-sources' && req.method === 'POST') return send(res, 201, { source: await addKnowledgeSource(settings.dataRoot, await readBody(req)) })
   if (route === '/preferences' && req.method === 'PUT') return send(res, 200, { communicationPreferences: await saveCommunicationPreferences(settings.dataRoot, (await readBody(req)).communicationPreferences) })
@@ -105,7 +130,7 @@ export function apply(ctx, config) {
     handler: async (req, res) => {
       const rejection = ctx.connection?.requestRejection?.(req)
       if (!ctx.connection?.requestRejection || rejection !== undefined) return send(res, rejection || 403, { error: '需要通过 DSH 本机授权会话访问' })
-      try { await handle(req, res, config) }
+      try { await handle(req, res, config, ctx) }
       catch (error) { send(res, 400, { error: error instanceof Error ? error.message : String(error) }) }
     },
   }), 'cancer-psych-support-workbench: api')
