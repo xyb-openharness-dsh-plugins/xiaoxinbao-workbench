@@ -1,6 +1,6 @@
 # 留一盏灯 · 癌症心理支持工作台
 
-面向各类肿瘤患者与家属的 DSH Desktop 心理支持与沟通工作台。当前版本 **0.3.14**。
+面向各类肿瘤患者与家属的 DSH Desktop 心理支持与沟通工作台。当前版本 **0.3.15**。
 
 > The first DSH workbench dedicated to supporting the emotional and psychological well-being of people living with cancer and their caregivers.
 
@@ -212,7 +212,7 @@ npm pack --dry-run
 
 ```sh
 npm pack
-dsh plugin --profile web add ./dsh-cancer-psych-support-workbench-0.3.14.tgz
+dsh plugin --profile web add ./dsh-cancer-psych-support-workbench-0.3.15.tgz
 ```
 
 安装后**完整退出并重开 DSH Desktop**（不是关窗口）。重启后在左侧模式切换器里就能看到「留一盏灯 · 心理支持」。

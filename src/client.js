@@ -456,7 +456,7 @@
         ])
         const status = error || notice
         return h('main', { className: 'cps-frame' },
-          h('header', { className: 'cps-topbar' }, h('div', { className: 'cps-brand' }, h('img', { src: ASSETS.logo, alt: '小胰宝' }), h('b', null, 'DSH'), h('i'), h('strong', null, '留一盏灯'), h('span', null, '心理支持与沟通工作台'), h('small', null, 'v0.3.14')), h('div', { className: 'cps-top-actions' }, h('span', { className: 'cps-service-state' }, health), button('⚙ 配置', () => setTab('配置'), `cps-settings-button${tab === '配置' ? ' active' : ''}`))),
+          h('header', { className: 'cps-topbar' }, h('div', { className: 'cps-brand' }, h('img', { src: ASSETS.logo, alt: '小胰宝' }), h('b', null, 'DSH'), h('i'), h('strong', null, '留一盏灯'), h('span', null, '心理支持与沟通工作台'), h('small', null, 'v0.3.15')), h('div', { className: 'cps-top-actions' }, h('span', { className: 'cps-service-state' }, health), button('⚙ 配置', () => setTab('配置'), `cps-settings-button${tab === '配置' ? ' active' : ''}`))),
           h('nav', { className: 'cps-tabs', 'aria-label': '工作台页面' }, ['陪伴', '本次回顾', '量表记录', '资料检索', '历史对话'].map((name) => button(name, () => setTab(name), `cps-tab${tab === name ? ' active' : ''}`, false, name))),
           status ? h('div', { className: `cps-alert${error ? ' is-error' : ''}`, role: 'status' }, status) : null,
           tab === '陪伴' ? h('div', { className: `cps-main${showSession ? ' with-chat' : ''}`, ref: splitRef, style: showSession ? { '--cps-agent': agentPct + '%', position: 'relative' } : undefined },
