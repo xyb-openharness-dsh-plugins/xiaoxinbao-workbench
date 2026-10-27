@@ -16,6 +16,36 @@
   ]
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
   const formatDate = (v) => { const d = new Date(v); return Number.isFinite(d.getTime()) ? d.toLocaleString() : '刚刚' }
+  // 会话面板分隔线（家族基线：1px 线 + 11px 透明热区 + 品牌色发光 + ⠿ 把手）
+  const SPLITTER_BRAND = '#168e73'
+  const splitterRgba = (hex, alpha) => {
+    const n = parseInt(String(hex).replace('#', ''), 16)
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
+  }
+  const splitterStyle = {
+    position: 'absolute', top: 0, bottom: 0, width: 1, marginRight: -0.5,
+    zIndex: 2, background: 'rgba(53, 128, 100, 0.18)', cursor: 'col-resize', touchAction: 'none',
+    transition: 'background .15s ease, box-shadow .15s ease',
+  }
+  const splitterHoverStyle = { ...splitterStyle, background: SPLITTER_BRAND, boxShadow: `0 0 6px ${splitterRgba(SPLITTER_BRAND, 0.55)}` }
+  const splitterDragStyle = { ...splitterHoverStyle, boxShadow: `0 0 10px ${splitterRgba(SPLITTER_BRAND, 0.8)}` }
+  const splitterHitStyle = { position: 'absolute', top: 0, bottom: 0, left: -5, width: 11, background: 'transparent', cursor: 'col-resize' }
+  const splitterGripStyle = {
+    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+    width: 14, height: 22, borderRadius: 4, background: SPLITTER_BRAND,
+    color: '#fff', fontSize: 11, lineHeight: '22px', letterSpacing: '-1px', textAlign: 'center',
+    opacity: 0.95, pointerEvents: 'none', userSelect: 'none',
+    boxShadow: '0 1px 4px rgba(0, 0, 0, 0.18)',
+  }
+  const DRAG_SHIELD_ATTR = 'data-cps-drag-shield'
+  const mountDragShield = () => {
+    unmountDragShield()
+    const el = document.createElement('div')
+    el.setAttribute(DRAG_SHIELD_ATTR, '')
+    Object.assign(el.style, { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 4, background: 'transparent', cursor: 'col-resize' })
+    document.body.appendChild(el)
+  }
+  const unmountDragShield = () => document.querySelectorAll('[' + DRAG_SHIELD_ATTR + ']').forEach((el) => el.remove())
   const request = async (path, options = {}) => {
     const response = await fetch(`/api/cancer-psych-support-workbench${path}`, { credentials: 'same-origin', cache: 'no-store', ...options, headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) } })
     const body = await response.json().catch(() => ({}))
@@ -85,45 +115,64 @@
         const [searchBusy, setSearchBusy] = useState(false)
         const [health, setHealth] = useState('')
         const [showSession, setShowSession] = useState(false)
-        // 左右分栏的可拖动分割线：左侧角色区占比，0.22–0.7。初始 0.4 与原 CSS 一致；
-        // 用户拖过的比例存在 localStorage，下次进入保持不变。
-        const [splitRatio, setSplitRatio] = useState(() => {
-          try { const v = Number(localStorage.getItem('cps-split-ratio')); if (v >= 0.22 && v <= 0.7) return v } catch {}
-          return 0.4
+        // 会话面板（AI 对话区）占根容器宽度的百分比，25%–45%，步进 2%。初始 35% 与基线一致；
+        // 用户拖过的宽度存在 localStorage，下次进入保持不变。
+        const [agentPct, setAgentPct] = useState(() => {
+          try { const v = Number(localStorage.getItem('cps-agent-width')); if (v >= 25 && v <= 45) return v } catch {}
+          return 35
         })
+        const [hovering, setHovering] = useState(false)
+        const [draggingUi, setDraggingUi] = useState(false)
         const splitRef = React.useRef(null)
-        const splitDrag = React.useRef(null)
+        const splitDrag = React.useRef(false)
+        const pctRef = React.useRef(agentPct)
+        pctRef.current = agentPct
+        const applyPct = (n) => {
+          const next = Math.min(45, Math.max(25, Math.round(n)))
+          setAgentPct(next)
+          try { localStorage.setItem('cps-agent-width', String(next)) } catch {}
+          return next
+        }
+        const startSplitDrag = (e) => {
+          if (!splitRef.current) return
+          splitDrag.current = true
+          setDraggingUi(true)
+          setHovering(true)
+          try { e.currentTarget.setPointerCapture?.(e.pointerId) } catch {}
+          mountDragShield()
+          document.body.style.userSelect = 'none'
+          document.body.style.cursor = 'col-resize'
+          e.preventDefault()
+        }
+        const onSplitterKeyDown = (e) => {
+          if (e.key === 'ArrowLeft') { e.preventDefault(); applyPct(pctRef.current + 2) }
+          else if (e.key === 'ArrowRight') { e.preventDefault(); applyPct(pctRef.current - 2) }
+          else if (e.key === 'Home') { e.preventDefault(); applyPct(25) }
+          else if (e.key === 'End') { e.preventDefault(); applyPct(45) }
+        }
         useEffect(() => {
           const move = (e) => {
-            if (!splitDrag.current?.main) return
-            const rect = splitDrag.current.main.getBoundingClientRect()
-            const raw = (e.clientX - rect.left) / rect.width
-            const next = Math.min(0.7, Math.max(0.22, raw))
-            setSplitRatio(next)
-            try { localStorage.setItem('cps-split-ratio', String(next)) } catch {}
+            if (!splitDrag.current || !splitRef.current) return
+            const rect = splitRef.current.getBoundingClientRect()
+            applyPct(((rect.right - e.clientX) / rect.width) * 100)
           }
           const up = () => {
             if (!splitDrag.current) return
-            splitDrag.current.handle?.classList?.remove('dragging')
-            splitDrag.current = null
+            splitDrag.current = false
+            setDraggingUi(false)
+            unmountDragShield()
             document.body.style.userSelect = ''
             document.body.style.cursor = ''
+          }
+          window.addEventListener('pointermove', move)
+          window.addEventListener('pointerup', up)
+          window.addEventListener('pointercancel', up)
+          return () => {
             window.removeEventListener('pointermove', move)
             window.removeEventListener('pointerup', up)
+            window.removeEventListener('pointercancel', up)
+            unmountDragShield()
           }
-          const startSplitDrag = (e) => {
-            if (!splitRef.current) return
-            const main = splitRef.current
-            splitDrag.current = { main, handle: e.currentTarget }
-            e.currentTarget.classList.add('dragging')
-            document.body.style.userSelect = 'none'
-            document.body.style.cursor = 'col-resize'
-            window.addEventListener('pointermove', move)
-            window.addEventListener('pointerup', up)
-            e.preventDefault()
-          }
-          window.__cpsStartSplitDrag = startSplitDrag
-          return up
         }, [])
         const active = roles.find((item) => item.id === roleId) || roles[1]
         // 角色设定只在开场写入一次，之后的对话风格靠那条消息维持；所以切换角色卡时
@@ -410,14 +459,24 @@
           h('header', { className: 'cps-topbar' }, h('div', { className: 'cps-brand' }, h('img', { src: ASSETS.logo, alt: '小胰宝' }), h('b', null, 'DSH'), h('i'), h('strong', null, '留一盏灯'), h('span', null, '心理支持与沟通工作台'), h('small', null, 'v0.3.14')), h('div', { className: 'cps-top-actions' }, h('span', { className: 'cps-service-state' }, health), button('⚙ 配置', () => setTab('配置'), `cps-settings-button${tab === '配置' ? ' active' : ''}`))),
           h('nav', { className: 'cps-tabs', 'aria-label': '工作台页面' }, ['陪伴', '本次回顾', '量表记录', '资料检索', '历史对话'].map((name) => button(name, () => setTab(name), `cps-tab${tab === name ? ' active' : ''}`, false, name))),
           status ? h('div', { className: `cps-alert${error ? ' is-error' : ''}`, role: 'status' }, status) : null,
-          tab === '陪伴' ? h('div', { className: `cps-main${showSession ? ' with-chat' : ''}`, ref: splitRef, style: showSession ? { '--cps-split': splitRatio } : undefined },
+          tab === '陪伴' ? h('div', { className: `cps-main${showSession ? ' with-chat' : ''}`, ref: splitRef, style: showSession ? { '--cps-agent': agentPct + '%', position: 'relative' } : undefined },
             h('section', { className: 'cps-home' },
               h('div', { className: 'cps-heading' }, [h('p', { className: 'cps-kicker', key: 'kicker' }, '这段路，可以有人陪你走'), h('h1', { key: 'title' }, '此刻，你想和谁聊一会儿？'), h('p', { key: 'lede' }, '可聊病情生活，也可吐槽全世界，你觉得如何。')]),
               h('div', { className: 'cps-role-grid' }, roles.map((role) => h('button', { key: role.id, className: `cps-role${role.id === roleId ? ' selected' : ''}`, onClick: () => { setRoleId(role.id); setNotice(''); setError('') }, 'aria-pressed': role.id === roleId }, h('img', { src: role.portrait, alt: '' }), h('strong', null, role.name), h('span', { className: 'cps-rule' }), h('span', { className: 'cps-role-line' }, `“${role.line}”`), h('small', null, role.group)))),
               h('div', { className: 'cps-selected' }, h('div', { className: 'cps-selected-row' }, h('div', { className: 'cps-selected-copy', key: 'copy' }, [h('strong', { key: 'intro' }, active.intro), h('p', { key: 'hosted' }, '对话由 DSH 原生会话和你配置的模型承载。')]), button(ownsCurrent ? '继续这段对话' : '开始陪伴', () => { if (ownsCurrent) { setShowSession(true); setNotice('') } else { setTopic(active.opening); setModal(true) } }, 'cps-primary', busy, 'cta')), h('div', { className: 'cps-selected-topics' }, [h('small', { key: 'cap' }, '可以就这样开始：'), ...active.topics.map((x) => button(x, () => setTopic(topic === x ? '' : x), 'cps-chip' + (topic === x ? ' is-active' : ''), false, `sel-${x}`))])),
               h('div', { className: 'cps-crisis-note' }, '如果你或身边的人现在有伤害自己的危险，或出现急剧加重的身体症状，请立即联系当地急救服务、就近急诊或可信任的人陪同。')),
             showSession ? [
-              h('div', { className: 'cps-splitter', role: 'separator', 'aria-orientation': 'vertical', 'aria-label': '拖动调整左右分栏宽度', key: 'splitter', onPointerDown: (e) => window.__cpsStartSplitDrag?.(e) }),
+              h('div', {
+                className: 'cps-splitter', role: 'separator', 'aria-orientation': 'vertical', key: 'splitter',
+                'aria-label': '调整 AI 对话面板宽度', 'aria-valuemin': 25, 'aria-valuemax': 45, 'aria-valuenow': agentPct, tabIndex: 0,
+                onPointerDown: startSplitDrag,
+                onPointerEnter: () => setHovering(true),
+                onPointerLeave: () => setHovering(false),
+                onKeyDown: onSplitterKeyDown,
+                style: { ...(draggingUi ? splitterDragStyle : hovering ? splitterHoverStyle : splitterStyle), right: agentPct + '%' },
+              },
+                h('span', { style: splitterHitStyle, 'aria-hidden': 'true' }),
+                (hovering || draggingUi) ? h('span', { style: splitterGripStyle, 'aria-hidden': 'true' }, '⠿') : null),
               h('section', { className: 'cps-chat-area', key: 'chat' }, h('div', { className: 'cps-chat-toolbar' }, h('strong', null, `${active.name} · DSH 原生会话`), button('新开一段对话', startFreshSession, 'cps-secondary', busy), button('生成本次回顾', startReview, 'cps-secondary'), button('重发角色设定', () => sendRolePrompt(active), 'cps-secondary', busy), button('返回角色', () => setShowSession(false), 'cps-link')), h('div', { className: 'cps-conversation' }, ownsCurrent ? conversation : h('div', { className: 'cps-no-chat' }, '创建或恢复工作台会话后，这里会显示 DSH 原生对话。'))),
             ] : null) : null,
           tab === '陪伴' && selectedRoleChanged ? h('div', { className: 'cps-alert', role: 'status' }, `已切换到「${active.name}」，但当前会话仍按上一个角色的设定在聊。`,
